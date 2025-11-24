@@ -20,6 +20,9 @@ export const filterProperties = (properties, filters) => {
   const houseTypeSet = new Set(houseTypeFilter);
   const placeTypeSet = new Set(placeTypeFilter);
 
+  // Precompute host averages once (O(n)) to maintain O(n) complexity for the entire filter
+  const hostAverages = superHostFilter ? computeHostAverages(properties) : null;
+
   const failsRangeCheck = (range, field) => range && (range[0] > field || range[1] < field);
   const failsSetCheck = (set, field) => set.size > 0 && !set.has(field);
 
@@ -28,7 +31,7 @@ export const filterProperties = (properties, filters) => {
       return false;
     }
 
-    if (superHostFilter && !isSuperHost(property, properties)) {
+    if (superHostFilter && !isSuperHost(property, hostAverages)) {
       return false;
     }
 
@@ -51,15 +54,45 @@ export const filterProperties = (properties, filters) => {
 };
 
 /**
- * Determine if the host of the specified `property` is a "Super Host". A Super Host is a host with an average start
+* Compute average star ratings for each host (O(n) operation).
+ * Returns a Map where keys are hostIds and values are their average star ratings.
+ * @param {Array} allProperties - Array of all properties
+ * @return {Map} - Map of hostId -> average star rating
+ */
+function computeHostAverages(allProperties) {
+  const hostStats = new Map();
+
+  for (const property of allProperties) {
+    if (!hostStats.has(property.hostId)) {
+      hostStats.set(property.hostId, { totalStars: 0, count: 0 });
+    }
+    const stats = hostStats.get(property.hostId);
+    stats.totalStars += property.stars;
+    stats.count += 1;
+  }
+
+  // Convert to a map of hostId -> average
+  const hostAverages = new Map();
+  for (const [hostId, stats] of hostStats) {
+    hostAverages.set(hostId, stats.totalStars / stats.count);
+  }
+
+  return hostAverages;
+}
+
+/**
+ * Determine if the host of the specified `property` is a "Super Host". A Super Host is a host with an average star
  * rating of 4 or more across all of their properties.
  * @param {Object} property - The property currently being checked for "Super Host" status
- * @param {Array} allProperties - Array of all properties
+ * @param {Map} hostAverages - Map of hostId -> average star rating (precomputed)
  * @return {Boolean} - true if the host of `property` is a "Super Host". Otherwise false.
  */
-function isSuperHost(property, allProperties) {
-  //TODO: replace placeholder implementation
-  return true;
+function isSuperHost(property, hostAverages) {
+  if (!hostAverages) {
+    return false;
+  }
+  const average = hostAverages.get(property.hostId);
+  return average !== undefined && average >= 4;
 }
 
 export const RATE_FILTER_META = {
