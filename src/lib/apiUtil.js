@@ -38,4 +38,20 @@ export const ApiUtil = {
       .post(`/api/properties/${propertyId}/checkAvailability`, { checkinDate, duration })
       .then((response) => response.data.available);
   },
+
+  /**
+   * Reserve a property
+   * @param {string} propertyId - ID of the property to reserve
+   * @param {string} checkinDate - Date of arrival at the property in format yyyy-mm-dd (e.g. "2022-01-30")
+   * @param {number} duration - Number of days to stay at the property. Must be greater than 0.
+   * @param {number} guests - Number of guests staying at the property. Must be greater than 0.
+   * @return A promise that resolves on successful reservation
+   */
+  reserve(propertyId, checkinDate, duration, guests) {
+    return axios.post(`/api/properties/${propertyId}/reserve`, {
+      checkinDate,
+      duration,
+      guests,
+    });
+  },
 };

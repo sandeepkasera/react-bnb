@@ -67,11 +67,90 @@ const BookingForm = ({ rate }) => {
   const [guests, setGuests] = useState('');
   const [showAvailabilityError, setShowAvailabilityError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const checkinDateRef = useRef(null);
+  const formRef = useRef(null);
 
-  function submitBooking() {
-    //TODO: make a call to API to reserve the property.
+  /**
+   * Form Improvements Made:
+   * 1. Validation: Check all required fields are filled and have valid format
+   * 2. Error Handling: Display specific error messages for different failure scenarios
+   * 3. Success Feedback: Show confirmation message after successful reservation
+   * 4. Loading State: Disable form and show loading indicator during API call
+   * 5. Accessibility: Added aria-labels, aria-describedby, aria-live regions for status updates
+   * 6. HTML Best Practices: Use semantic form elements with proper labels, input types, required attributes
+   * 7. User Experience: Clear messages, disable submit if availability check failed, auto-clear messages
+   */
+  function submitBooking(e) {
+    e.preventDefault();
+
+    // Clear previous messages
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    // Validate inputs
+    if (!checkinDate || !duration || !guests) {
+      setErrorMessage('Please fill in all fields.');
+      return;
+    }
+
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(checkinDate)) {
+      setErrorMessage('Check-in date must be in yyyy-mm-dd format.');
+      return;
+    }
+
+    // Validate duration is a positive number
+    const durationNum = parseInt(duration, 10);
+    if (isNaN(durationNum) || durationNum <= 0) {
+      setErrorMessage('Duration must be a positive number of days.');
+      return;
+    }
+
+    // Validate guests is a positive number
+    const guestsNum = parseInt(guests, 10);
+    if (isNaN(guestsNum) || guestsNum <= 0) {
+      setErrorMessage('Number of guests must be a positive number.');
+      return;
+    }
+
+    // If availability error is shown, prevent submission
+    if (showAvailabilityError) {
+      setErrorMessage('The specified dates are not available. Please select different dates.');
+      return;
+    }
+
+    setLoading(true);
+
+    ApiUtil.reserve(propertyId, checkinDate, durationNum, guestsNum)
+      .then(() => {
+        // Success - show confirmation and reset form
+        setSuccessMessage('Reservation successful! Your booking has been confirmed.');
+        formRef.current?.reset();
+        setCheckinDate('');
+        setDuration('');
+        setGuests('');
+        // Auto-clear success message after 5 seconds
+        setTimeout(() => setSuccessMessage(''), 5000);
+      })
+      .catch((error) => {
+        // Handle specific error codes from API
+        if (error.response?.status === 400) {
+          setErrorMessage(
+            error.response?.data?.errorMsg || 'Property is not available for the selected dates.'
+          );
+        } else if (error.response?.status === 422) {
+          setErrorMessage('Invalid input. Please check your entries.');
+        } else {
+          setErrorMessage('Reservation failed. Please try again later.');
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }
 
   useEffect(() => {
@@ -80,39 +159,96 @@ const BookingForm = ({ rate }) => {
   }, [propertyId, checkinDate, duration]);
 
   return (
-    <form className="booking-form">
+    <form className="booking-form" ref={formRef} onSubmit={submitBooking}>
       <div className="booking-rate-section">
         <span className="booking-rate-amount">${rate}</span>
-        /night
+        <span>/night</span>
       </div>
 
+      {/* Success message with aria-live for screen readers */}
+      {successMessage && (
+        <div
+          className="booking-form-success-msg"
+          role="alert"
+          aria-live="polite"
+          aria-label="Success message"
+        >
+          {successMessage}
+        </div>
+      )}
+
+      {/* Error message with aria-live for screen readers */}
+      {errorMessage && (
+        <div
+          className="booking-form-error-msg"
+          role="alert"
+          aria-live="assertive"
+          aria-label="Error message"
+        >
+          {errorMessage}
+        </div>
+      )}
+
       <div className="booking-form-item">
-        <label>Check-in date</label>
+        <label htmlFor="checkin-date">Check-in date</label>
         <input
+          id="checkin-date"
           className="booking-form-input"
           onChange={() => handleCheckinDateChange(checkinDateRef.current, setCheckinDate)}
           ref={checkinDateRef}
           placeholder="yyyy-mm-dd"
+          type="text"
+          required
+          aria-required="true"
+          aria-describedby={showAvailabilityError ? 'date-error' : undefined}
         />
         {showAvailabilityError && (
-          <div className="booking-form-error-msg">The specified dates are not available.</div>
+          <div className="booking-form-error-msg" id="date-error">
+            The specified dates are not available.
+          </div>
         )}
       </div>
 
       <div className="booking-form-item">
-        <label>Duration of stay (days)</label>
-        <input className="booking-form-input" onChange={(e) => setDuration(e.target.value)} />
+        <label htmlFor="duration">Duration of stay (days)</label>
+        <input
+          id="duration"
+          className="booking-form-input"
+          type="number"
+          min="1"
+          value={duration}
+          onChange={(e) => setDuration(e.target.value)}
+          required
+          aria-required="true"
+        />
       </div>
 
       <div className="booking-form-item">
-        <label>Number of guests</label>
-        <input className="booking-form-input" onChange={(e) => setGuests(e.target.value)} />
+        <label htmlFor="guests">Number of guests</label>
+        <input
+          id="guests"
+          className="booking-form-input"
+          type="number"
+          min="1"
+          value={guests}
+          onChange={(e) => setGuests(e.target.value)}
+          required
+          aria-required="true"
+        />
       </div>
 
       <div>
-        <button className="booking-form-submit" type="button" onClick={submitBooking}>
+        <button
+          className="booking-form-submit"
+          type="submit"
+          disabled={loading || showAvailabilityError}
+          aria-busy={loading}
+        >
           {loading ? (
-            <img src={LoadingImg} alt="" className="booking-form-loading-img" />
+            <>
+              <img src={LoadingImg} alt="" className="booking-form-loading-img" />
+              <span>Reserving...</span>
+            </>
           ) : (
             'Reserve'
           )}
