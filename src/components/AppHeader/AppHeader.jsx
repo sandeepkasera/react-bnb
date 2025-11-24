@@ -13,7 +13,16 @@ import Select from 'react-select';
  * corresponding node can be found.
  */
 function goToNode(propertyLookupTree, searchText) {
-  //TODO: optionally implement function
+  let currentNode = propertyLookupTree;
+  
+  for (const char of searchText) {
+    if (!currentNode[char]) {
+      return undefined;
+    }
+    currentNode = currentNode[char];
+  }
+  
+  return currentNode;
 }
 
 /**
@@ -22,7 +31,25 @@ function goToNode(propertyLookupTree, searchText) {
  * @return An array of all matches under `node`
  */
 function collectAllMatches(node) {
-  //TODO: optionally implement function
+  const matches = [];
+  
+  if (!node || typeof node !== 'object') {
+    return matches;
+  }
+  
+  // If this node has a match property, add it to results
+  if (node.match) {
+    matches.push(node.match);
+  }
+  
+  // Recursively collect all matches from child nodes
+  for (const key in node) {
+    if (key !== 'match' && typeof node[key] === 'object') {
+      matches.push(...collectAllMatches(node[key]));
+    }
+  }
+  
+  return matches;
 }
 
 /**
@@ -48,8 +75,13 @@ function collectAllMatches(node) {
  * [{id: "bar", name: "Bar"}, {id: "baz", name: "Baz"}]
  */
 export function findMatches(propertyLookupTree, searchText) {
-  //TODO: implement function
-  return [];
+  const node = goToNode(propertyLookupTree, searchText);
+  
+  if (node === undefined) {
+    return [];
+  }
+  
+  return collectAllMatches(node);
 }
 
 function AppHeader({ propertyLookupTree }) {
