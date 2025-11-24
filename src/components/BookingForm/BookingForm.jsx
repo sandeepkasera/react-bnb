@@ -6,6 +6,9 @@ import LoadingImg from '../../assets/loading.gif';
 import { ApiUtil } from '../../lib/apiUtil';
 import { applyDateMask } from '../../lib/inputMaskUtil';
 
+// Track the current request ID to handle stale responses
+let currentRequestId = 0;
+
 function handleCheckinDateChange(checkinDateElem, setCheckinDate) {
   const formattedDateStr = applyDateMask(checkinDateElem);
   setCheckinDate(formattedDateStr);
@@ -30,7 +33,31 @@ export function onRequestedDatesChange(
   durationString,
   setShowAvailabilityError
 ) {
-  // TODO: implement function
+  // Validate date format: yyyy-mm-dd
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(checkinDate)) {
+    return;
+  }
+
+  // Convert duration to number, default to 1 if empty
+  const duration = durationString ? parseInt(durationString, 10) : 1;
+
+  // Increment request ID to track this request
+  const requestId = ++currentRequestId;
+
+  // Clear any existing timeout and set a new one with 500ms debounce
+  if (onRequestedDatesChange.timeoutId !== undefined) {
+    clearTimeout(onRequestedDatesChange.timeoutId);
+  }
+
+  onRequestedDatesChange.timeoutId = setTimeout(() => {
+    ApiUtil.checkAvailability(propertyId, checkinDate, duration).then((isAvailable) => {
+      // Only process response if this is still the current request
+      if (requestId === currentRequestId) {
+        setShowAvailabilityError(!isAvailable);
+      }
+    });
+  }, 500);
 }
 
 const BookingForm = ({ rate }) => {
