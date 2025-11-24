@@ -10,6 +10,7 @@ import {
   RATE_FILTER_META,
   STAR_FILTER_META,
 } from '../../lib/filterUtil';
+import { useFilters } from '../../context/FiltersContext';
 import './PropertyFilters.scss';
 
 const LOCATION_OPTIONS = [
@@ -22,14 +23,13 @@ const PLACE_TYPE_OPTIONS = ['Entire place', 'Private room', 'Hotel room', 'Share
 const HOUSE_TYPE_OPTIONS = ['House', 'Apartment', 'Bed and breakfast', 'Boutique hotel'];
 
 const PropertyFilters = () => {
+  const { filters, setFilters } = useFilters();
   const [mobileCollapsed, setMobileCollapsed] = useState(true);
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
   const filterIconClass = mobileCollapsed ? 'fas fa-plus' : 'fas fa-minus';
 
   function onFilterChange(partialFilters) {
-    const updatedFilters = { ...filters, ...partialFilters };
-    setFilters(updatedFilters);
+    setFilters((prev) => ({ ...prev, ...partialFilters }));
   }
 
   return (
@@ -92,7 +92,7 @@ const PropertyFilters = () => {
         </div>
       </div>
       {!isEqual(filters, DEFAULT_FILTERS) && (
-        <button className="filter-clear-button" onClick={() => onFilterChange(DEFAULT_FILTERS)}>
+        <button className="filter-clear-button" onClick={() => setFilters(DEFAULT_FILTERS)}>
           Clear Filters
         </button>
       )}

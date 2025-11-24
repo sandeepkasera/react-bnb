@@ -5,14 +5,18 @@ import './PropertyGrid.scss';
 import { ApiUtil } from '../../lib/apiUtil';
 import { getPropertiesForPage } from '../../lib/paginationUtil';
 import Pagination from '../Pagination/Pagination';
+import { filterProperties } from '../../lib/filterUtil';
+import { useFilters } from '../../context/FiltersContext';
 
 const PropertyGrid = () => {
-  const [properties, setProperties] = useState(null);
+  const { filters } = useFilters();
+  const [rawProperties, setProperties] = useState(null);
   const [page, setPage] = useState(1);
 
   useEffect(() => {
     ApiUtil.getProperties().then((data) => setProperties(data));
   }, []);
+  const properties = filterProperties(rawProperties || [], filters || {});
 
   if (!properties || properties.length === 0) {
     return (
